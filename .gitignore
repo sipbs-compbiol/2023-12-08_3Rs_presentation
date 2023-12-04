@@ -1,0 +1,6 @@
+# macOS files
+.DS_Store
+
+# R project
+.Rhistory
+.Rproj.user

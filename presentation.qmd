@@ -1,0 +1,882 @@
+---
+title: "Three (Rs) Tips for Better Statistical Analysis"
+author: "Leighton Pritchard"
+format:
+  revealjs:
+    chalkboard: true
+    theme: [default, _includes/styles.scss]
+    footer: "AWERB 3Rs day 2023"
+    logo: assets/images/sipbs_compbio.png
+---
+
+```{r echo=FALSE}
+# Don't forget to install gifski, so that the simulation exports as a .gif
+library(broom)
+library(dplyr)
+library(DT)
+library(gganimate)
+library(ggplot2)
+library(ggpubr)
+library(gtsummary)
+library(kableExtra)
+library(multcompView)
+library(palmerpenguins)
+library(rstatix)
+library(tidyverse)
+
+# Required for kableExtra styling to show in reveealJS
+options("kableExtra.html.bsTable" = TRUE)
+```
+# 1. Formalise your design
+
+## A Simple Experiment
+
+I am worried that I have a pair of loaded dice: biased to roll one number more often than expected by chance alone.
+
+::: { .callout-note }
+## My experiment
+
+I roll my two dice and the "biased" number shows on one die; check if both dice show the same number.
+
+If both dice show the same number more often than chance alone would suggest, I will accept my dice are loaded.
+:::
+
+::: { .callout-warning }
+## Let's set a P-value threshold for accepting the null hypothesis
+
+$H_0$: both dice are fair and show that same number _by chance alone_.
+:::
+
+## Live demonstration
+
+::: { .callout-important }
+## Ooh! Risky!
+:::
+
+![How to bias dice by heating them in an oven at about 121degC for 10min. Don't use a microwave or blame me for the consequences/if you get caught.](assets/images/loaded_dice.jpg){#fig-loading_dice width=60%}
+
+## Probability
+
+::: { .callout-tip }
+## A definition
+
+**The probability of an event occurring is**: the proportion of all possible outcomes that are that event.
+:::
+
+::: { .callout-important }
+## Tossing a coin
+
+**Outcomes**: heads or tails (two outcomes, assuming a fair coin and toss)
+
+**Probability of showing heads**: $\frac{1}{2} = 0.5$ as it is one of two outcomes
+:::
+
+## Your predictions, please
+
+::: { .callout-tip}
+## If one die shows the pre-named "bias" number, what is the probability that both dice are fair and showed the same number, by chance alone?
+:::
+
+::: { .notes }
+Use the chalkboard here to tally audience guesses
+:::
+
+
+## Outcomes when rolling two dice
+
+```{r}
+library(DT)
+
+dfm <- data.frame(x1 = c("1,1", "2,1", "3,1", "4,1", "5,1", "6,1"),
+                  x2 = c("1,2", "2,2", "3,2", "4,2", "5,2", "6,2"),
+                  x3 = c("1,3", "2,3", "3,3", "4,3", "5,3", "6,3"),
+                  x4 = c("1,4", "2,4", "3,4", "4,4", "5,4", "6,4"),
+                  x5 = c("1,5", "2,5", "3,5", "4,5", "5,5", "6,5"),
+                  x6 = c("1,6", "2,6", "3,6", "4,6", "5,6", "6,6"))
+rownames(dfm) <- c(1, 2, 3, 4, 5, 6)
+colnames(dfm) <- c(1, 2, 3, 4, 5, 6)
+
+datatable(dfm,
+          rownames = TRUE,
+          extensions = c('Select', 'Buttons'),
+          options = list(
+            select = list(style = 'os', items = 'row'),
+            dom = 'Bt',
+            rowId = 0,
+            buttons = c('selectNone', 'selectRows', 'selectColumns')
+              ),
+          selection = 'none')
+```
+
+## Simulation: 1000 rolls
+
+```{r}
+#| cache: true
+
+n_rolls <- 1000
+rolls <- data.frame(roll = 1:n_rolls,
+                   die1 = sample.int(6, n_rolls, replace=TRUE),
+                   die2 = sample.int(6, n_rolls, replace=TRUE)) %>%
+  mutate(same_val = (die1 == 3 & die2 == 3)) %>%
+  mutate(die1 = (die1 == 3)) %>%
+  mutate(die2 = (die2 == 3)) %>%
+  mutate(cs_same = cumsum(same_val)) %>%
+  mutate(cs_die1 = cumsum(die1)) %>%
+  mutate(cs_die2 = cumsum(die2)) %>%
+  mutate(p_die1 = cs_same/cs_die1) %>%
+  mutate(p_die2 = cs_same/cs_die2) %>%
+  mutate(p_tot = cs_same/(cs_die1+cs_die2)) %>%
+  gather(information, probabilities, p_die1:p_tot, factor_key = TRUE) %>%
+  mutate(probabilities = round(probabilities, 3))
+
+pause <- 1000
+stasis <- data.frame(roll = rep(seq(n_rolls+1, n_rolls+pause), 3),
+                     die1 = rep(FALSE, pause * 3),
+                     die2 = rep(FALSE, pause * 3),
+                     same_val = c(rep(rolls[n_rolls,]$same_val, pause),
+                                 rep(rolls[n_rolls * 2,]$same_val, pause),
+                                 rep(rolls[n_rolls * 3,]$same_val, pause)),
+                     cs_same = c(rep(rolls[n_rolls,]$cs_same, pause),
+                                 rep(rolls[n_rolls * 2,]$cs_same, pause),
+                                 rep(rolls[n_rolls * 3,]$cs_same, pause)),
+                     cs_die1 = c(rep(rolls[n_rolls,]$cs_die1, pause),
+                                 rep(rolls[n_rolls * 2,]$cs_die1, pause),
+                                 rep(rolls[n_rolls * 3,]$cs_die1, pause)),
+                     cs_die2 = c(rep(rolls[n_rolls,]$cs_die2, pause),
+                                 rep(rolls[n_rolls * 2,]$cs_die2, pause),
+                                 rep(rolls[n_rolls * 3,]$cs_die2, pause)),
+                     information = c(rep(rolls[n_rolls,]$information, pause),
+                                rep(rolls[n_rolls * 2,]$information, pause),
+                                rep(rolls[n_rolls * 3,]$information, pause)),
+                     probabilities = c(rep(rolls[n_rolls,]$probabilities, pause),
+                                rep(rolls[n_rolls * 2,]$probabilities, pause),
+                                rep(rolls[n_rolls * 3,]$probabilities, pause)))
+
+p <- ggplot(rbind(rolls, stasis), aes(x=information,
+                       y=probabilities,
+                       color=information,
+                       fill=information,
+                       label=probabilities)) +
+  geom_point(size=20) +
+  geom_label(color="white") +
+  theme(legend.position="none") +
+  scale_x_discrete(limits=c("p_die1", "p_die2", "p_tot"),
+                   labels=c("Left die", "Right die", "Either die")) +
+  scale_fill_brewer(palette="Dark2", direction=-1) +
+  scale_color_brewer(palette="Dark2", direction=-1)
+
+p + transition_time(roll) +
+  labs(title = "Roll: {min(frame_time, n_rolls)}") +
+  shadow_wake(wake_length = 0.3, alpha = TRUE)
+```
+## What This Means For Us
+
+::: { .callout-caution }
+**Verbal and written experiment descriptions can influence or disguise expected effect sizes, statistical analysis and outcomes**
+:::
+
+::: { .callout-tip }
+## Talk to a statistician (or other colleague)
+
+- what's ambiguous to them?
+- if they explain the experiment back to you, what sounds different to you?
+:::
+
+::: {.notes}
+If I only see your experimental design as a brief written account in a grant application, I can't always get the full picture.
+:::
+
+## What This Means
+
+::: { .callout-caution }
+**Verbal and written experiment descriptions influence statistical analysis and outcomes**
+:::
+
+::: { .callout-tip }
+## Experimenter understanding can influence use of language
+
+- We assume through explanatory gaps when we think we understand something.
+- **Clarity and precision are essential when explaining to others**
+- Use the [NC3Rs EDA](https://www.nc3rs.org.uk/our-portfolio/experimental-design-assistant-eda) to **formalise unambiguous experimental designs**
+:::
+
+## Use NC3Rs EDA
+
+::: { .callout-important }
+## Please share the EDA diagram/session with your statistician.
+:::
+
+![NC3Rs EDA forces clarification of concepts and is a focus for discussion.](assets/images/eda1.png){#fig-eda1 width=60%}
+
+# 2. Use ANOVA
+
+## An experimental dataset
+
+- A control (`ctrl`) and two treatments (`trt1`, `trt2`)
+
+```{r}
+#| fig-align: center
+#| out-width: 70%
+
+data_long <- PlantGrowth
+
+p1 <- ggplot(data_long, aes(x=weight, fill=group)) +
+  geom_density(alpha=0.7) +
+  scale_fill_brewer(palette="Dark2")
+p2 <- ggplot(data_long, aes(x=group, y=weight, fill=group)) +
+  geom_boxplot() + geom_jitter(width=0.1) +
+  scale_fill_brewer(palette="Dark2")
+
+ggarrange(p1, p2)
+```
+
+- Does it look like there are differences between the groups?
+
+## _t_-tests
+
+::: { .callout-note }
+## _t_-tests assume that datasets are Normal distributions ^[also that samples are independent, randomly sampled, and have the same variance (Student's _t_)]
+
+The only input the test gets:
+
+  - mean $\mu$, standard deviation $\sigma$ for each group
+:::
+
+```{r}
+#| fig-align: center
+#| out-width: 45%
+
+p <- ggplot(data_long, aes(x=weight)) +
+  stat_function(fun=dnorm,
+                args=with(data_long %>% filter(group == "ctrl"),
+                          c(mean=mean(weight), sd=sd(weight))),
+                color="#1B9E77") +
+  stat_function(fun=dnorm,
+                args=with(data_long %>% filter(group == "trt1"),
+                          c(mean=mean(weight), sd=sd(weight))),
+                color="#D95F02") +
+  stat_function(fun=dnorm,
+                args=with(data_long %>% filter(group == "trt2"),
+                          c(mean=mean(weight), sd=sd(weight))),
+                color="#7570B3") +
+  scale_x_continuous("weight")
+p
+```
+
+## _t_-tests
+
+::: { .callout-note }
+## _t_-tests assume that datasets are Normal distributions
+
+The only input the test gets:
+
+  - mean $\mu$, standard deviation $\sigma$ for each group
+:::
+
+```{r}
+kable(data_long %>% group_by(group) %>%
+        summarize(mean=mean(weight), sd=sd(weight))) %>%
+  kable_styling(c("striped", "condensed"),
+                stripe_color="darkolivegreen4")
+```
+
+## _t_-test results
+
+::: { .callout-tip }
+I'd recommend `R` for reproducible analyses. ^[`t.test` in `R` does not assume equal variance by default: Welch's _t_-test]
+:::
+
+```{r}
+#| eval: false
+#| echo: true
+
+t.test(weight ~ group, data)
+```
+
+```{r}
+dfm.tests <- data.frame(
+  bind_rows(tidy(t.test(weight ~ group, data_long %>% filter(group != "trt2"))),
+            tidy(t.test(weight ~ group, data_long %>% filter(group != "trt1"))),
+            tidy(t.test(weight ~ group, data_long %>% filter(group != "ctrl"))))) %>% 
+  select(estimate, conf.low, conf.high, p.value)
+rownames(dfm.tests) <- c("ctrl.vs.trt1", "ctrl.vs.trt2", "trt1.vs.trt2")
+kable(dfm.tests) %>%
+  kable_styling(c("striped", "condensed"),
+                stripe_color="darkolivegreen4")
+```
+
+## Multiple tests
+
+::: { .callout-important }
+## These `p.values` are not correct
+
+For three groups, there are three pairwise comparisons.
+
+But _t_-tests calculate probability for a **_single_** pairwise comparison!
+:::
+  
+::: { .callout-warning }
+## Multiple _t_-tests on your data increase Type I error rate (at P<0.05)
+
+- **One test**: P(type I error) = 0.05
+- **Two tests**: P(type I error) = 0.0975
+- **Three tests**: P(type I error) = 0.1427
+:::
+
+## Multiple tests
+
+::: { .callout-important }
+## These `p.values` are not correct
+
+For three groups, there are three pairwise comparisons.
+
+But _t_-tests calculate probability for a **_single_** pairwise comparison!
+:::
+
+::: { .callout-tip }
+## One solution: multiple test correction
+
+Bonferroni, Benjamini-Hochberg, etc.
+  
+- **Bonferroni**: divide your P-value significance threshold by number of comparisons, $n$
+  - P threshold for one comparison: $0.05$
+  - Adjusted for three comparisons: $0.05 / 3 \approx 0.016$
+:::
+
+## Corrected _t_-test results
+
+::: { .callout-important }
+## We adjust our threshold for significance.
+
+Which comparisons are significant at $P=0.05$ for a single comparison, _when Bonferroni corrected for three comparisons_? (i.e. $P=0.016$)
+:::
+
+```{r}
+dfm.tests <- data.frame(
+  bind_rows(tidy(t.test(weight ~ group, data_long %>% filter(group != "trt2"))),
+            tidy(t.test(weight ~ group, data_long %>% filter(group != "trt1"))),
+            tidy(t.test(weight ~ group, data_long %>% filter(group != "ctrl"))))) %>% 
+  select(estimate, conf.low, conf.high, p.value)
+rownames(dfm.tests) <- c("ctrl.vs.trt1", "ctrl.vs.trt2", "trt1.vs.trt2")
+kable(dfm.tests) %>%
+  kable_styling(c("striped", "condensed"),
+                stripe_color="darkolivegreen4")
+```
+
+## ANOVA
+
+::: { .callout-tip }
+## Especially if you have data in three or more groups, use ANOVA
+
+- ANOVA performs all comparisons for all groups simultaneously
+- ANOVA does not require multiple test correction
+- ANOVA can give more information than a _t_-test
+- _t_-tests are a special case of ANOVA (you get the same answer either way)
+:::
+
+##  ANOVA in `R`:
+
+::: { .callout-tip }
+## No more difficult than applying a _t_-test
+:::
+
+```{r}
+data_pair <- data_long %>% filter(group != "ctrl")
+```
+
+```{r echo=TRUE}
+data.t.test <- t.test(weight ~ group, data_pair)
+```
+
+```{r}
+#| out-width: 70%
+
+kable(tidy(data.t.test) %>% select(estimate, conf.low, conf.high, p.value),
+      digits=5) %>%
+  kable_styling(font_size=20)
+```
+
+```{r echo=TRUE}
+data.aov <- aov(weight ~ group, data_pair)
+```
+
+```{r}
+tbl_regression(data.aov)
+```
+## _t_-tests and ANOVA are related
+
+```{r echo=TRUE}
+data.t.test <- t.test(weight ~ group, data_pair, var.equal=TRUE)
+```
+
+::: { .callout-note }
+## Student's _t_-test assumes equal variances
+:::
+
+```{r}
+#| out-width: 70%
+
+kable(tidy(data.t.test) %>% select(estimate, conf.low, conf.high, p.value),
+      digits=3) %>%
+  kable_styling(font_size=20)
+```
+
+::: { .callout-note }
+## ANOVA on two groups is a pairwise Student's _t_-test
+:::
+
+```{r echo=TRUE}
+data.aov <- aov(weight ~ group, data_pair)
+```
+
+```{r}
+tbl_regression(data.aov, digits=5)
+```
+## _t_-tests and ANOVA are related
+
+
+```{r echo=TRUE}
+data.t.test <- t.test(weight ~ group, data_pair)
+```
+
+```{r}
+#| out-width: 70%
+
+kable(tidy(data.t.test) %>% select(estimate, conf.low, conf.high, p.value),
+      digits=5) %>%
+  kable_styling(font_size=20)
+```
+
+::: { .callout-note }
+## ANOVA with unequal variance is a pairwise Welch's _t_-test
+:::
+
+
+```{r echo=TRUE}
+data.aov <- oneway.test(weight ~ group, data_pair)
+```
+
+```{r}
+kable(tidy(data.aov) %>% select(p.value, method), digits=5) %>%
+  kable_styling(font_size=20)
+```
+
+
+## Comparing multiple groups
+
+::: { .callout-tip }
+## All pairwise comparisons with ANOVA
+
+Use Tukey's HSD (Honest Significant Difference)
+
+- a common, but not the only, post-hoc test
+:::
+  
+```{r echo=TRUE}
+data.aov <- aov(weight ~ group, data_long)
+data.tukey <- TukeyHSD(data.aov)
+```
+
+```{r}
+#| out-width: 70%
+
+kable(tukey_hsd(data.aov) %>%
+        select(group1, group2, estimate, conf.low, conf.high, p.adj),
+      digits=3) %>%
+  kable_styling(font_size=20)
+```
+
+## Comparing multiple groups
+
+```{r echo=TRUE}
+plot(data.tukey, col="red")
+```
+## ANOVA allows blocking
+
+::: { .callout-important }
+## This is important when using both sexes
+
+But also if there are other batch effects to account for
+:::
+
+![MRC require that both sexes are used in experiments, unless there is strong justification not to.](assets/images/mrc_requirement.png){#fig-mrc width=50%}
+
+## ANOVA allows blocking
+
+![If sex is not a parameter under direct investigation, you do not need to power your experiment to take sex into account.](assets/images/change_half_animals.png){#fig-change width=55%}
+
+![Using both sexes allows _monitoring_ for sex effects: e.g. by Two-way ANOVA](assets/images/pooling_sexes.png){#fig-change width=40%}
+
+## An example
+
+::: { .callout-tip }
+## Let's look at penguins!
+
+- Does body mass vary by species?
+  - (but let's be mindful that there might be a sex difference)
+:::
+
+```{r}
+data <- penguins %>% select(species, sex, body_mass_g) %>%
+  filter(!is.na(sex)) %>%
+  filter(!is.na(body_mass_g))
+kable(head(data)) %>% kable_styling(font_size=20,
+                                    c("striped", "condensed"),
+                                    stripe_color="darkolivegreen4")
+```
+
+## Visualise the dataset
+
+```{r}
+p <- ggplot(data, aes(x=species, y=body_mass_g, color=species)) +
+  geom_boxplot(outlier.shape=NA) +
+  geom_jitter(width=0.1) +
+  scale_color_brewer(palette="Dark2", direction=-1) +
+  scale_fill_brewer(palette="Dark2", direction=1)
+p
+```
+
+## One-way ANOVA (ignore sex)
+
+```{r echo=TRUE}
+data.aov <- aov(body_mass_g ~ species, data)
+tbl_regression(data.aov)
+```
+
+```{r echo=TRUE}
+data.hsd <- TukeyHSD(data.aov)
+```
+
+```{r}
+#| out-width: 70%
+
+kable(tukey_hsd(data.aov) %>%
+        select(group1, group2, estimate, conf.low, conf.high, p.adj),
+      digits=3) %>%
+  kable_styling(font_size=20)
+```
+
+## Visualise the dataset (sex differences)
+
+```{r}
+p <- ggplot(data, aes(x=species, y=body_mass_g,
+                      fill=sex, color=species)) +
+  geom_boxplot(outlier.shape=NA) +
+  geom_point(position=position_jitterdodge()) +
+  scale_color_brewer(palette="Dark2", direction=-1) +
+  scale_fill_brewer(palette="Dark", direction=1)
+p
+```
+
+## Two-way ANOVA (monitor sex effect)
+
+```{r echo=TRUE}
+data.aov.tw <- aov(body_mass_g ~ species + sex, data=data)
+```
+
+```{r}
+tbl_regression(data.aov.tw)
+```
+
+```{r echo=TRUE}
+data.hsd.tw <- TukeyHSD(data.aov.tw)
+```
+
+```{r}
+#| out-width: 70%
+
+kable(tukey_hsd(data.aov.tw) %>%
+        select(group1, group2, estimate, conf.low, conf.high, p.adj),
+      digits=3) %>%
+  kable_styling(font_size=20)
+```
+
+## Interactions between categories
+
+![Two-way ANOVA lets us see interactions between categories](assets/images/interactions.png){#fig-interactions width=50%}
+
+## Interactions between categories
+
+```{r}
+data.ints <- data %>% filter(!is.na(sex)) %>%
+  group_by(species, sex) %>%
+  summarise(mass_groups = mean(body_mass_g))
+
+p <- ggplot(data.ints, aes(x=species, y=mass_groups, color=sex)) +
+  geom_line(aes(group=sex)) +
+  geom_point()
+
+p
+```
+
+## Interactions between categories
+
+```{r echo=TRUE}
+data.aov.twi <- aov(body_mass_g ~ species * sex, data=data)
+```
+
+```{r}
+tbl_regression(data.aov.twi)
+```
+
+::: { .callout-note }
+## There are significant effects due to species and sex
+:::
+
+
+::: { .callout-warning }
+## And also an interaction between species and sex
+
+(i.e. the influence of sex varies from species to species)
+:::
+
+## ANOVA is a regression model
+
+::: { .callout-tip }
+## Can use `R`'s regression tools to extract more information
+:::
+
+```{r eval=FALSE, echo=TRUE}
+lm(data.aov.twi)
+```
+
+```{r}
+tbl_regression(lm(data.aov.twi))
+```
+
+## ANOVA is a regression model
+
+::: { .callout-tip }
+## Using interactions and regression can be more informative 
+:::
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+```{r}
+#| out-width: 70%
+
+kable(tukey_hsd(data.aov.tw) %>%
+        select(group1, group2, estimate, conf.low, conf.high, p.adj),
+      digits=3) %>%
+  kable_styling(font_size=16)
+```
+:::
+
+::: {.column width="50%"}
+
+```{r}
+tbl_regression(lm(data.aov.twi))
+```
+
+:::
+
+::::
+
+## EDA may recommend ANOVA
+
+![EDA may well recommend ANOVA](assets/images/eda_recommends.png){#fig-anovarec width=60%}
+
+::: { .callout-warning }
+## But NC3Rs EDA power calculations only cover pairwise _t_-tests!
+:::
+
+# 3. ANOVA power calculation
+
+## EDA power calculations
+
+::: { .callout-warning }
+## NC3Rs EDA power calculations only cover pairwise _t_-tests
+:::
+
+::: { .callout-tip }
+## But other tools are available
+
+- `R`
+- `G*Power`
+- `SPSS`
+- `Stata`
+- run your own simulations
+:::
+  
+## `G*Power`
+
+:::: {.columns}
+
+::: {.column width="50%"}
+
+- Free software
+- [HHU Düsseldorf](https://www.psychologie.hhu.de/arbeitsgruppen/allgemeine-psychologie-und-arbeitspsychologie/gpower)
+- Windows and macOS
+- [Detailed manual](https://www.psychologie.hhu.de/fileadmin/redaktion/Fakultaeten/Mathematisch-Naturwissenschaftliche_Fakultaet/Psychologie/AAP/gpower/GPowerManual.pdf)
+
+::: { .callout-note }
+## Supports ANOVA power calculation
+:::
+
+:::
+
+::: {.column width="50%"}
+
+![Screenshot of `G*Power` on macOS](assets/images/gpower1.png){#fig-gpower1 width=60%}
+
+:::
+
+::::
+
+## Power
+
+::: { .callout-important }
+## Statistical Power
+
+- Type II Error, $\beta$: the probability of a false _negative_ (missing a true _positive_ result)
+
+- Power, $1 - \beta$: the probability that you won't miss a true _positive_ result (assuming that there is one)
+:::
+
+::: { .callout-note }
+## Statistical Threshold
+
+- Type I Error, $\alpha$: the probability of a false _positive_ (calling a positive result when the true result is _negative_)
+
+- **This is the _P_-value threshold you set for your hypothesis tests**
+
+:::
+
+## Calculating minimal sample sizes
+
+::: { .callout-important }
+## For 3Rs we want to minimise individuals used
+:::
+
+::: { .callout-warning }
+## You need to know ^[all elements are experimenter's choice]
+
+- What size of effect you aim to detect
+- How many groups (categories) and their layout (e.g. two species, two sexes = $2 \times 2$)
+  - This allows us to calculate degrees of freedom (d.f.)
+- The statistical threshold $\alpha$ for the probability of false positives you're willing to accept
+- The statistical power $1 - \beta$ for the probability of false negatives you're willing to accept
+:::
+
+## Effect size in ANOVA
+
+::: { .callout-note }
+## Effect size definition
+
+- _Effect size_ is an interpretable number that quantifies the difference between the data and a hypothesis.
+
+- Multiple measures for this
+  - Cohen's D, Cohen's W, Cohen's F, Pearson's R, $\eta^2$ (partial) eta squared, Cramér's V, etc.
+:::
+
+::: { .callout-caution }
+## `G*Power` uses Cohen's F for ANOVA
+
+- small effect size $f$ = 0.10
+- medium effect size $f$ = 0.25
+- large effect size $f$ = 0.40
+:::
+
+## An example
+
+::: { .callout-note }
+## Our experiment
+
+- Measure **treatment _vs_ control** (two groups), and **difference between sexes** (two groups); design is $2 \times 2$ factorial
+  - Numerator degrees of freedom: $(2 - 1) \times (2 - 1) = 1$
+  - Number of groups: $4$
+- By convention, we use **$\alpha = 0.05$, $1 - \beta = 0.8$**.
+:::
+
+::: { .callout-tip }
+## _A priori_ power calculation (ANOVA): **main effects and interactions**
+
+- `F-test`
+- `ANOVA, Fixed effects, special, main effects and interactions`
+:::
+
+## An example
+
+:::: { .columns }
+
+::: { .column width=50%}
+::: { style="font-size: x-large;" }
+- Test family: `F tests`
+- Type of power analysis: `A priori: Compute required sample size - given` $\alpha$`, power, and effect size`
+- Effect size $f$: `0.4`
+- Error probability $\alpha$: `0.05`
+- Power ($1 − \beta$ error probability): `0.8`
+- Numerator d.f.: (2 − 1) × (2 − 1) = `1`
+- Number of groups: `4`
+
+::: { .callout-important icon=false}
+## Effect size
+
+- A value of Cohen's F ($f$) that represents the effect size we want to be able to detect.
+
+- The contribution of the effect we want to detect to the overall variation in the dataset
+:::
+:::
+:::
+
+::: { .column width=50% }
+![Setting parameters in `G*power`](assets/images/gpower2.png){#fig-gpower2 width=80%}
+:::
+::::
+
+## An example
+
+:::: { .columns }
+
+::: { .column width=50% }
+::: { style="font-size: x-large;" }
+::: { .callout-important icon=false}
+- Noncentrality parameter $\lambda$: `8.32`
+- Critical F: `4.043`
+- Denominator d.f.: `48`
+- **Total sample size: `52`**
+- **Actual power: `0.807`**
+:::
+
+::: { .callout-caution icon=false}
+- 52 individuals is a multiple of the number of groups
+  - $13 \times 4 = 52$
+  - **Balanced design: four groups of 13**
+:::
+:::
+:::
+
+::: { .column width=50% }
+![`G*power` output](assets/images/gpower3.png){#fig-gpower3 width=80%}
+:::
+::::
+
+## An example
+
+- `G*Power` will let you plot how sample size trends with desired power
+
+![`G*Power` sample size vs power plot](assets/images/gpower4.png){#fig-gpower4 width=40%}
+
+## An example
+
+- The same plot with better colour choices (PDF output)
+
+![`G*Power` sample size vs power plot](assets/images/gpower5.png){#fig-gpower5 width=75%}
+
+# Conclusions
+
+## Conclusions
+
+::: { .callout-important }
+## Use NC3Rs EDA to formalise your design
+:::
+
+::: { .callout-caution }
+## Use ANOVA (where appropriate)
+:::
+
+::: { .callout-tip }
+## If using ANOVA, `G*Power` can calculate required samples for desired power
+:::
