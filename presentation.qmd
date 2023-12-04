@@ -55,6 +55,16 @@ $H_0$: both dice are fair and show that same number _by chance alone_.
 
 ![How to bias dice by heating them in an oven at about 121degC for 10min. Don't use a microwave or blame me for the consequences/if you get caught.](assets/images/loaded_dice.jpg){#fig-loading_dice width=60%}
 
+## Your predictions, please
+
+::: { .callout-tip}
+## If one die shows the pre-named "bias" number, what is the probability that both dice are fair and showed the same number, by chance alone?
+:::
+
+::: { .notes }
+Use the chalkboard here to tally audience guesses
+:::
+
 ## Probability
 
 ::: { .callout-tip }
@@ -69,16 +79,6 @@ $H_0$: both dice are fair and show that same number _by chance alone_.
 **Outcomes**: heads or tails (two outcomes, assuming a fair coin and toss)
 
 **Probability of showing heads**: $\frac{1}{2} = 0.5$ as it is one of two outcomes
-:::
-
-## Your predictions, please
-
-::: { .callout-tip}
-## If one die shows the pre-named "bias" number, what is the probability that both dice are fair and showed the same number, by chance alone?
-:::
-
-::: { .notes }
-Use the chalkboard here to tally audience guesses
 :::
 
 
