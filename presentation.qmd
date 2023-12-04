@@ -63,6 +63,14 @@ $H_0$: both dice are fair and show that same number _by chance alone_.
 **The probability of an event occurring is**: the proportion of all possible outcomes that are that event.
 :::
 
+::: { .callout-important }
+## Tossing a coin
+
+**Outcomes**: heads or tails (two outcomes, assuming a fair coin and toss)
+
+**Probability of showing heads**: $\frac{1}{2} = 0.5$ as it is one of two outcomes
+:::
+
 ## Your predictions, please
 
 ::: { .callout-tip}
@@ -72,15 +80,6 @@ $H_0$: both dice are fair and show that same number _by chance alone_.
 ::: { .notes }
 Use the chalkboard here to tally audience guesses
 :::
-
-::: { .callout-important }
-## Tossing a coin
-
-**Outcomes**: heads or tails (two outcomes, assuming a fair coin and toss)
-
-**Probability of showing heads**: $\frac{1}{2} = 0.5$ as it is one of two outcomes
-:::
-
 
 
 ## Outcomes when rolling two dice
