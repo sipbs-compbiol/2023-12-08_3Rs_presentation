@@ -469,7 +469,7 @@ kable(tidy(data.aov) %>% select(p.value, method), digits=5) %>%
 
 Use Tukey's HSD (Honest Significant Difference)
 
-- a common, but not the only, post-hoc test
+- a common, but not the only, _post-hoc test_
 :::
   
 ```{r echo=TRUE}
@@ -501,11 +501,11 @@ But also if there are other batch effects to account for
 
 ![MRC require that both sexes are used in experiments, unless there is strong justification not to.](assets/images/mrc_requirement.png){#fig-mrc width=50%}
 
-## ANOVA allows blocking
-
-![If sex is not a parameter under direct investigation, you do not need to power your experiment to take sex into account.](assets/images/change_half_animals.png){#fig-change width=55%}
+## ANOVA supports blocking
 
 ![Using both sexes allows _monitoring_ for sex effects: e.g. by Two-way ANOVA](assets/images/pooling_sexes.png){#fig-change width=40%}
+
+![If sex is not a parameter under direct investigation, you do not need to power your experiment to take sex into account.](assets/images/change_half_animals.png){#fig-change width=55%}
 
 ## An example
 
@@ -520,6 +520,7 @@ But also if there are other batch effects to account for
 data <- penguins %>% select(species, sex, body_mass_g) %>%
   filter(!is.na(sex)) %>%
   filter(!is.na(body_mass_g))
+
 kable(head(data)) %>% kable_styling(font_size=20,
                                     c("striped", "condensed"),
                                     stripe_color="darkolivegreen4")
@@ -676,7 +677,7 @@ tbl_regression(lm(data.aov.twi))
 
 ## EDA may recommend ANOVA
 
-![EDA may well recommend ANOVA](assets/images/eda_recommends.png){#fig-anovarec width=60%}
+![EDA may well recommend ANOVA if you have any sort of blocking](assets/images/eda_recommends.png){#fig-anovarec width=60%}
 
 ::: { .callout-warning }
 ## But NC3Rs EDA power calculations only cover pairwise _t_-tests!
@@ -712,7 +713,7 @@ tbl_regression(lm(data.aov.twi))
 - [Detailed manual](https://www.psychologie.hhu.de/fileadmin/redaktion/Fakultaeten/Mathematisch-Naturwissenschaftliche_Fakultaet/Psychologie/AAP/gpower/GPowerManual.pdf)
 
 ::: { .callout-note }
-## Supports ANOVA power calculation
+## Supports ANOVA power calculation and sample size estimation
 :::
 
 :::
